@@ -39,9 +39,9 @@ import org.proxydroid.utils.ImageLoader;
 import org.proxydroid.utils.ImageLoaderFactory;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
@@ -68,9 +68,9 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 
 	private boolean appsLoaded = false;
 
-	final Handler handler = new Handler() {
+	final Handler handler = new Handler(new Handler.Callback() {
 		@Override
-		public void handleMessage(Message msg) {
+		public boolean handleMessage(Message msg) {
 			switch (msg.what) {
 			case MSG_LOAD_START:
 				pd = ProgressDialog.show(AppManager.this, "",
@@ -88,7 +88,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 					public void onScrollStateChanged(AbsListView view,
 							int scrollState) {
 						visible = true;
-						if (scrollState == ListView.OnScrollListener.SCROLL_STATE_IDLE) {
+						if (scrollState == OnScrollListener.SCROLL_STATE_IDLE) {
 							overlay.setVisibility(View.INVISIBLE);
 						}
 					}
@@ -115,33 +115,24 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 				}
 				break;
 			}
-			super.handleMessage(msg);
+			return true;
 		}
-	};
+	});
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-		case android.R.id.home:
-			// app icon in action bar clicked; go home
-//			Intent intent = new Intent(this, ProxyDroid.class);
-//			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//			startActivity(intent);
+		if (item.getItemId() == android.R.id.home) {
 			finish();
 			return true;
-		default:
-			return super.onOptionsItemSelected(item);
 		}
+		return super.onOptionsItemSelected(item);
 	}
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-
-		((ProxyDroidApplication)getApplication())
-				.firebaseAnalytics.setCurrentScreen(this, "app_manager", null);
 		
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
 
 		this.setContentView(R.layout.layout_apps);
 
@@ -175,9 +166,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 	@Override
 	protected void onResume() {
 		super.onResume();
-
 		new Thread() {
-
 			@Override
 			public void run() {
 				handler.sendEmptyMessage(MSG_LOAD_START);
@@ -189,24 +178,20 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 				handler.sendEmptyMessage(MSG_LOAD_FINISH);
 			}
 		}.start();
-
 	}
 
 	private void loadApps() {
 		getApps(this);
 
-		Arrays.sort(apps, new Comparator<ProxyedApp>() {
-			@Override
-			public int compare(ProxyedApp o1, ProxyedApp o2) {
-				if (o1 == null || o2 == null || o1.getName() == null
-						|| o2.getName() == null)
-					return 1;
-				if (o1.isProxyed() == o2.isProxyed())
-					return o1.getName().compareTo(o2.getName());
-				if (o1.isProxyed())
-					return -1;
+		Arrays.sort(apps, (o1, o2) -> {
+			if (o1 == null || o2 == null || o1.getName() == null
+					|| o2.getName() == null)
 				return 1;
-			}
+			if (o1.isProxyed() == o2.isProxyed())
+				return o1.getName().compareTo(o2.getName());
+			if (o1.isProxyed())
+				return -1;
+			return 1;
 		});
 
 		final LayoutInflater inflater = getLayoutInflater();
@@ -303,11 +288,10 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 
 		Iterator<ApplicationInfo> itAppInfo = lAppInfo.iterator();
 
-		Vector<ProxyedApp> vectorApps = new Vector<ProxyedApp>();
+		Vector<ProxyedApp> vectorApps = new Vector<>();
 
-		ApplicationInfo aInfo = null;
+		ApplicationInfo aInfo;
 
-		int appIdx = 0;
 
 		while (itAppInfo.hasNext()) {
 			aInfo = itAppInfo.next();
@@ -327,11 +311,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 					&& aInfo.packageName.equals("org.proxydroid")) {
 				if (self)
 					app.setProxyed(true);
-			} else if (Arrays.binarySearch(tordApps, app.getUsername()) >= 0) {
-				app.setProxyed(true);
-			} else {
-				app.setProxyed(false);
-			}
+			} else app.setProxyed(Arrays.binarySearch(tordApps, app.getUsername()) >= 0);
 
 			if (app.isProxyed())
 				vectorApps.add(app);
@@ -360,7 +340,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 
 		Arrays.sort(tordApps);
 
-		Vector<ProxyedApp> vectorApps = new Vector<ProxyedApp>();
+		Vector<ProxyedApp> vectorApps = new Vector<>();
 
 		// else load the apps up
 		PackageManager pMgr = context.getPackageManager();
@@ -369,7 +349,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 
 		Iterator<ApplicationInfo> itAppInfo = lAppInfo.iterator();
 
-		ApplicationInfo aInfo = null;
+		ApplicationInfo aInfo;
 
 		while (itAppInfo.hasNext()) {
 			aInfo = itAppInfo.next();
@@ -395,11 +375,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 			tApp.setName(pMgr.getApplicationLabel(aInfo).toString());
 
 			// check if this application is allowed
-			if (Arrays.binarySearch(tordApps, tApp.getUsername()) >= 0) {
-				tApp.setProxyed(true);
-			} else {
-				tApp.setProxyed(false);
-			}
+			tApp.setProxyed(Arrays.binarySearch(tordApps, tApp.getUsername()) >= 0);
 
 			vectorApps.add(tApp);
 		}
@@ -409,28 +385,25 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 
 	}
 
-	public void saveAppSettings(Context context) {
+	public void saveAppSettings() {
 		if (apps == null)
 			return;
 
 		SharedPreferences prefs = PreferenceManager
 				.getDefaultSharedPreferences(this);
 
-		// final SharedPreferences prefs =
-		// context.getSharedPreferences(PREFS_KEY, 0);
-
 		StringBuilder tordApps = new StringBuilder();
 
-		for (int i = 0; i < apps.length; i++) {
-			if (apps[i].isProxyed()) {
-				tordApps.append(apps[i].getUsername());
+		for (ProxyedApp app : apps) {
+			if (app.isProxyed()) {
+				tordApps.append(app.getUsername());
 				tordApps.append("|");
 			}
 		}
 
 		Editor edit = prefs.edit();
 		edit.putString(PREFS_KEY_PROXYED, tordApps.toString());
-		edit.commit();
+		edit.apply();
 
 	}
 
@@ -444,7 +417,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 			app.setProxyed(isChecked);
 		}
 
-		saveAppSettings(this);
+		saveAppSettings();
 
 	}
 
@@ -459,7 +432,7 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 			cbox.setChecked(app.isProxyed());
 		}
 
-		saveAppSettings(this);
+		saveAppSettings();
 
 	}
 

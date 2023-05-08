@@ -468,9 +468,9 @@ public class DomainValidator implements Serializable {
 			"zw", // Zimbabwe
 	};
 
-	private static final List INFRASTRUCTURE_TLD_LIST = Arrays
+	private static final List<String> INFRASTRUCTURE_TLD_LIST = Arrays
 			.asList(INFRASTRUCTURE_TLDS);
-	private static final List GENERIC_TLD_LIST = Arrays.asList(GENERIC_TLDS);
-	private static final List COUNTRY_CODE_TLD_LIST = Arrays
+	private static final List<String> GENERIC_TLD_LIST = Arrays.asList(GENERIC_TLDS);
+	private static final List<String> COUNTRY_CODE_TLD_LIST = Arrays
 			.asList(COUNTRY_CODE_TLDS);
 }

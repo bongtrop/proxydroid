@@ -54,7 +54,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.RemoteViews;
@@ -69,7 +68,6 @@ import com.btr.proxy.selector.pac.UrlPacScriptSource;
 
 import org.proxydroid.utils.Utils;
 
-import java.io.FileOutputStream;
 import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -163,7 +161,7 @@ public class ProxyDroidService extends Service {
     }
 
     private void markServiceStarted() {
-        sRunningInstance = new WeakReference<ProxyDroidService>(this);
+        sRunningInstance = new WeakReference<>(this);
     }
 
     private void markServiceStopped() {
@@ -357,7 +355,15 @@ public class ProxyDroidService extends Service {
 
         Intent intent = new Intent(this, ProxyDroid.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        pendIntent = PendingIntent.getActivity(this, 0, intent, 0);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            pendIntent = PendingIntent.getActivity
+                    (this, 0, intent, PendingIntent.FLAG_MUTABLE);
+
+        } else {
+            pendIntent = PendingIntent.getActivity
+                    (this, 0, intent, PendingIntent.FLAG_ONE_SHOT);
+        }
+
     }
 
     /**
@@ -365,9 +371,6 @@ public class ProxyDroidService extends Service {
      */
     @Override
     public void onDestroy() {
-
-        ((ProxyDroidApplication)getApplication())
-                .firebaseAnalytics.logEvent("service_stop", null);
 
         Utils.setConnecting(true);
 
@@ -391,7 +394,7 @@ public class ProxyDroidService extends Service {
 
         Editor ed = settings.edit();
         ed.putBoolean("isRunning", false);
-        ed.commit();
+        ed.apply();
 
         try {
             notificationManager.cancel(0);
@@ -414,14 +417,14 @@ public class ProxyDroidService extends Service {
         sb.append(Utils.getIptables()).append(" -t nat -F OUTPUT\n");
 
         if ("https".equals(proxyType)) {
-            sb.append("kill -9 `cat " + basePath + "gost.pid`\n");
+            sb.append("kill -9 `cat ").append(basePath).append("gost.pid`\n");
         }
 
         if (isAuth && isNTLM) {
-            sb.append("kill -9 `cat " + basePath + "cntlm.pid`\n");
+            sb.append("kill -9 `cat ").append(basePath).append("cntlm.pid`\n");
         }
 
-        sb.append(basePath + "proxy.sh " + basePath + " stop\n");
+        sb.append(basePath).append("proxy.sh ").append(basePath).append(" stop\n");
 
         new Thread() {
             @Override
@@ -432,38 +435,35 @@ public class ProxyDroidService extends Service {
 
     }
 
-    final Handler handler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            Editor ed = settings.edit();
-            switch (msg.what) {
-                case MSG_CONNECT_START:
-                    ed.putBoolean("isConnecting", true);
-                    Utils.setConnecting(true);
-                    break;
-                case MSG_CONNECT_FINISH:
-                    ed.putBoolean("isConnecting", false);
-                    Utils.setConnecting(false);
-                    break;
-                case MSG_CONNECT_SUCCESS:
-                    ed.putBoolean("isRunning", true);
-                    break;
-                case MSG_CONNECT_FAIL:
-                    ed.putBoolean("isRunning", false);
-                    break;
-                case MSG_CONNECT_PAC_ERROR:
-                    Toast.makeText(ProxyDroidService.this, R.string.msg_pac_error, Toast.LENGTH_SHORT)
-                            .show();
-                    break;
-                case MSG_CONNECT_RESOLVE_ERROR:
-                    Toast.makeText(ProxyDroidService.this, R.string.msg_resolve_error,
-                            Toast.LENGTH_SHORT).show();
-                    break;
-            }
-            ed.commit();
-            super.handleMessage(msg);
+    final Handler handler = new Handler(msg -> {
+        Editor ed = settings.edit();
+        switch (msg.what) {
+            case MSG_CONNECT_START:
+                ed.putBoolean("isConnecting", true);
+                Utils.setConnecting(true);
+                break;
+            case MSG_CONNECT_FINISH:
+                ed.putBoolean("isConnecting", false);
+                Utils.setConnecting(false);
+                break;
+            case MSG_CONNECT_SUCCESS:
+                ed.putBoolean("isRunning", true);
+                break;
+            case MSG_CONNECT_FAIL:
+                ed.putBoolean("isRunning", false);
+                break;
+            case MSG_CONNECT_PAC_ERROR:
+                Toast.makeText(ProxyDroidService.this, R.string.msg_pac_error, Toast.LENGTH_SHORT)
+                        .show();
+                break;
+            case MSG_CONNECT_RESOLVE_ERROR:
+                Toast.makeText(ProxyDroidService.this, R.string.msg_resolve_error,
+                        Toast.LENGTH_SHORT).show();
+                break;
         }
-    };
+        ed.apply();
+        return true;
+    });
 
     // Local Ip address
     public String getLocalIpAddress() {
@@ -552,9 +552,6 @@ public class ProxyDroidService extends Service {
             return;
         }
 
-        ((ProxyDroidApplication)getApplication())
-                .firebaseAnalytics.logEvent("service_start", null);
-
         Log.d(TAG, "Service Start");
 
         Bundle bundle = intent.getExtras();
@@ -583,43 +580,40 @@ public class ProxyDroidService extends Service {
         else
             domain = "";
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
+        new Thread(() -> {
 
-                handler.sendEmptyMessage(MSG_CONNECT_START);
+            handler.sendEmptyMessage(MSG_CONNECT_START);
 
-                hasRedirectSupport = Utils.getHasRedirectSupport();
+            hasRedirectSupport = Utils.getHasRedirectSupport();
 
-                if (getAddress() && handleCommand()) {
-                    // Connection and forward successful
-                    notifyAlert(getString(R.string.forward_success) + " | " + getProfileName(),
-                            getString(R.string.service_running));
+            if (getAddress() && handleCommand()) {
+                // Connection and forward successful
+                notifyAlert(getString(R.string.forward_success) + " | " + getProfileName(),
+                        getString(R.string.service_running));
 
-                    handler.sendEmptyMessage(MSG_CONNECT_SUCCESS);
+                handler.sendEmptyMessage(MSG_CONNECT_SUCCESS);
 
-                    // for widget, maybe exception here
-                    try {
-                        RemoteViews views = new RemoteViews(getPackageName(),
-                                R.layout.proxydroid_appwidget);
-                        views.setImageViewResource(R.id.serviceToggle, R.drawable.on);
-                        AppWidgetManager awm = AppWidgetManager.getInstance(ProxyDroidService.this);
-                        awm.updateAppWidget(awm.getAppWidgetIds(new ComponentName(
-                                ProxyDroidService.this, ProxyDroidWidgetProvider.class)), views);
-                    } catch (Exception ignore) {
-                        // Nothing
-                    }
-
-                } else {
-                    // Connection or forward unsuccessful
-
-                    stopSelf();
-                    handler.sendEmptyMessage(MSG_CONNECT_FAIL);
+                // for widget, maybe exception here
+                try {
+                    RemoteViews views = new RemoteViews(getPackageName(),
+                            R.layout.proxydroid_appwidget);
+                    views.setImageViewResource(R.id.serviceToggle, R.drawable.on);
+                    AppWidgetManager awm = AppWidgetManager.getInstance(ProxyDroidService.this);
+                    awm.updateAppWidget(awm.getAppWidgetIds(new ComponentName(
+                            ProxyDroidService.this, ProxyDroidWidgetProvider.class)), views);
+                } catch (Exception ignore) {
+                    // Nothing
                 }
 
-                handler.sendEmptyMessage(MSG_CONNECT_FINISH);
+            } else {
+                // Connection or forward unsuccessful
 
+                stopSelf();
+                handler.sendEmptyMessage(MSG_CONNECT_FAIL);
             }
+
+            handler.sendEmptyMessage(MSG_CONNECT_FINISH);
+
         }).start();
 
         markServiceStarted();

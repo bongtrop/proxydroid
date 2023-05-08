@@ -56,23 +56,26 @@ public class ProxyDroidWidgetProvider extends AppWidgetProvider {
 
 	public static final String PROXY_SWITCH_ACTION = "org.proxydroid.ProxyDroidWidgetProvider.PROXY_SWITCH_ACTION";
 	public static final String SERVICE_NAME = "org.proxydroid.ProxyDroidService";
-	public static final String TAG = "ProxyDroidWidgetProvider";
+	public static final String TAG = "PDWidgetProvider";
 
 	@Override
 	public void onUpdate(Context context, AppWidgetManager appWidgetManager,
 			int[] appWidgetIds) {
-		final int N = appWidgetIds.length;
 
 		// Perform this loop procedure for each App Widget that belongs to this
 		// provider
-		for (int i = 0; i < N; i++) {
-			int appWidgetId = appWidgetIds[i];
-
+		for (int appWidgetId : appWidgetIds) {
 			// Create an Intent to launch ExampleActivity
 			Intent intent = new Intent(context, ProxyDroidWidgetProvider.class);
 			intent.setAction(PROXY_SWITCH_ACTION);
-			PendingIntent pendingIntent = PendingIntent.getBroadcast(context,
-					0, intent, 0);
+			PendingIntent pendingIntent;
+			if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+				pendingIntent = PendingIntent.getActivity
+						(context, 0, intent, PendingIntent.FLAG_MUTABLE);
+			} else {
+				pendingIntent = PendingIntent.getActivity
+						(context, 0, intent, PendingIntent.FLAG_ONE_SHOT);
+			}
 
 			// Get the layout for the App Widget and attach an on-click listener
 			// to the button

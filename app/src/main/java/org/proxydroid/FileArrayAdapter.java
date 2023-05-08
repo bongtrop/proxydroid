@@ -13,9 +13,9 @@ import java.util.List;
 
 public class FileArrayAdapter extends ArrayAdapter<Option> {
 
-	private Context c;
-	private int id;
-	private List<Option> items;
+	private final Context c;
+	private final int id;
+	private final List<Option> items;
 
 	public FileArrayAdapter(Context context, int textViewResourceId,
 			List<Option> objects) {

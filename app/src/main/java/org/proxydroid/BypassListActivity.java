@@ -77,6 +77,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class BypassListActivity extends AppCompatActivity implements
 		OnClickListener, OnItemClickListener, OnItemLongClickListener {
@@ -91,13 +93,12 @@ public class BypassListActivity extends AppCompatActivity implements
 	private static final int MSG_IMPORT_ADDR = 5;
 	private static final int MSG_EXPORT_ADDR = 6;
 
-	private ListAdapter adapter;
 	private ArrayList<String> bypassList;
-	private Profile profile = new Profile();
+	private final Profile profile = new Profile();
 
-	final Handler handler = new Handler() {
+	final Handler handler = new Handler(new Handler.Callback() {
 		@Override
-		public void handleMessage(Message msg) {
+		public boolean handleMessage(Message msg) {
 			String addr;
 			switch (msg.what) {
 			case MSG_ERR_ADDR:
@@ -106,13 +107,13 @@ public class BypassListActivity extends AppCompatActivity implements
 				break;
 			case MSG_ADD_ADDR:
 				if (msg.obj == null)
-					return;
+					return false;
 				addr = (String) msg.obj;
 				bypassList.add(addr);
 				break;
 			case MSG_EDIT_ADDR:
 				if (msg.obj == null)
-					return;
+					return false;
 				addr = (String) msg.obj;
 				bypassList.set(msg.arg1, addr);
 				break;
@@ -122,51 +123,36 @@ public class BypassListActivity extends AppCompatActivity implements
 			case MSG_PRESET_ADDR:
 				String[] list = Constraints.PRESETS[msg.arg1];
 				reset(list);
-				return;
+				return true;
 			case MSG_EXPORT_ADDR:
 				if (msg.obj == null)
-					return;
+					return false;
 				Toast.makeText(BypassListActivity.this,
 						getString(R.string.exporting) + " " + (String) msg.obj,
 						Toast.LENGTH_LONG).show();
-				return;
+				return true;
 			}
 			refreshList();
-			super.handleMessage(msg);
+			return true;
 		}
-	};
+	});
 
 	@Override
 	public void onClick(View arg0) {
-		switch (arg0.getId()) {
-		case R.id.addBypassAddr:
-			editAddr(MSG_ADD_ADDR, -1);
-			break;
-		case R.id.presetBypassAddr:
-			presetAddr();
-			break;
-		case R.id.importBypassAddr:
-			importAddr();
-			break;
-		case R.id.exportBypassAddr:
-			exportAddr();
-			break;
-		}
+		int id = arg0.getId();
+		if (id == R.id.addBypassAddr) editAddr(MSG_ADD_ADDR, -1);
+		else if (id == R.id.presetBypassAddr) presetAddr();
+		else if (id == R.id.importBypassAddr) importAddr();
+		else if (id == R.id.exportBypassAddr) exportAddr();
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-		case android.R.id.home:
-			// app icon in action bar clicked; go home
-//			Intent intent = new Intent(this, ProxyDroid.class);
-//			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//			startActivity(intent);
+		if (item.getItemId() == android.R.id.home) {
 			finish();
 			return true;
-		default:
-			return super.onOptionsItemSelected(item);
 		}
+		return super.onOptionsItemSelected(item);
 	}
 
 	@Override
@@ -174,7 +160,7 @@ public class BypassListActivity extends AppCompatActivity implements
 
 		super.onCreate(savedInstanceState);
 
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
 
 		setContentView(R.layout.bypass_list);
 		TextView addButton = (TextView) findViewById(R.id.addBypassAddr);
@@ -209,33 +195,26 @@ public class BypassListActivity extends AppCompatActivity implements
 		AlertDialog ad = new AlertDialog.Builder(this)
 				.setTitle(R.string.preset_button)
 				.setNegativeButton(R.string.alert_dialog_cancel,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int whichButton) {
-								/* User clicked Cancel so do some stuff */
-							}
+						(dialog, whichButton) -> {
+							/* User clicked Cancel so do some stuff */
 						})
 				.setSingleChoiceItems(R.array.presets_list, -1,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int which) {
-								if (which >= 0
-										&& which < Constraints.PRESETS.length) {
-									Message msg = new Message();
-									msg.what = MSG_PRESET_ADDR;
-									msg.arg1 = which;
-									handler.sendMessage(msg);
-								}
-								dialog.dismiss();
+						(dialog, which) -> {
+							if (which >= 0
+									&& which < Constraints.PRESETS.length) {
+								Message msg = new Message();
+								msg.what = MSG_PRESET_ADDR;
+								msg.arg1 = which;
+								handler.sendMessage(msg);
 							}
+							dialog.dismiss();
 						}).create();
 		ad.show();
 	}
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
 		if (requestCode == Constraints.IMPORT_REQUEST) {
 			if (resultCode == RESULT_OK) {
 				if (data == null)
@@ -247,15 +226,13 @@ public class BypassListActivity extends AppCompatActivity implements
 				final ProgressDialog pd = ProgressDialog.show(this, "",
 						getString(R.string.importing), true, true);
 
-				final Handler h = new Handler() {
-					@Override
-					public void handleMessage(Message msg) {
-						refreshList();
-						if (pd != null) {
-							pd.dismiss();
-						}
+				final Handler h = new Handler(msg -> {
+					refreshList();
+					if (pd != null) {
+						pd.dismiss();
 					}
-				};
+					return true;
+				});
 
 				new Thread() {
 					@Override
@@ -303,67 +280,60 @@ public class BypassListActivity extends AppCompatActivity implements
 		final EditText path = (EditText) textEntryView
 				.findViewById(R.id.text_edit);
 
-		path.setText(Utils.getDataPath(this) + "/" + profile.getHost() + ".opt");
+		String pathStr = Utils.getDataPath(this) + "/" + profile.getHost() + ".opt";
+		path.setText(pathStr);
 
 		AlertDialog ad = new AlertDialog.Builder(this)
 				.setTitle(R.string.export_button)
 				.setView(textEntryView)
 				.setPositiveButton(R.string.alert_dialog_ok,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int whichButton) {
-								if (path.getText() == null
-										|| path.getText().toString() == null)
-									dialog.dismiss();
-								new Thread() {
-									@Override
-									public void run() {
+						(dialog, whichButton) -> {
+							if (path.getText() == null) {
+								dialog.dismiss();
+							}
+							new Thread() {
+								@Override
+								public void run() {
 
-										FileOutputStream output;
-										try {
-											File file = new File(path.getText()
-													.toString());
-											if (!file.exists())
-												file.createNewFile();
+									FileOutputStream output;
+									try {
+										File file = new File(path.getText()
+												.toString());
+										if (!file.exists())
+											file.createNewFile();
 
-											output = new FileOutputStream(file);
-											BufferedOutputStream bw = new BufferedOutputStream(
-													output);
-											for (String addr : bypassList) {
-												addr = Profile
-														.validateAddr(addr);
-												if (addr != null)
-													bw.write((addr + "\n")
-															.getBytes());
-											}
-
-											bw.flush();
-											bw.close();
-											output.flush();
-											output.close();
-										} catch (FileNotFoundException e) {
-											Log.e(TAG, "error to open file", e);
-										} catch (IOException e) {
-											Log.e(TAG, "error to write file", e);
+										output = new FileOutputStream(file);
+										BufferedOutputStream bw = new BufferedOutputStream(
+												output);
+										for (String addr : bypassList) {
+											addr = Profile
+													.validateAddr(addr);
+											if (addr != null)
+												bw.write((addr + "\n")
+														.getBytes());
 										}
 
-										Message msg = new Message();
-										msg.what = MSG_EXPORT_ADDR;
-										msg.obj = path.getText().toString();
-										handler.sendMessage(msg);
+										bw.flush();
+										bw.close();
+										output.flush();
+										output.close();
+									} catch (FileNotFoundException e) {
+										Log.e(TAG, "error to open file", e);
+									} catch (IOException e) {
+										Log.e(TAG, "error to write file", e);
 									}
-								}.start();
 
-							}
+									Message msg = new Message();
+									msg.what = MSG_EXPORT_ADDR;
+									msg.obj = path.getText().toString();
+									handler.sendMessage(msg);
+								}
+							}.start();
+
 						})
 				.setNegativeButton(R.string.alert_dialog_cancel,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int whichButton) {
-								/* User clicked cancel so do some stuff */
-							}
+						(dialog, whichButton) -> {
+							/* User clicked cancel so do some stuff */
 						}).create();
 		ad.show();
 	}
@@ -376,25 +346,17 @@ public class BypassListActivity extends AppCompatActivity implements
 				.setTitle(addr)
 				.setMessage(R.string.bypass_del_text)
 				.setPositiveButton(R.string.alert_dialog_ok,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int whichButton) {
-								/* User clicked OK so do some stuff */
-								Message msg = new Message();
-								msg.what = MSG_DEL_ADDR;
-								msg.arg1 = idx;
-								msg.obj = addr;
-								handler.sendMessage(msg);
-							}
+						(dialog, whichButton) -> {
+							/* User clicked OK so do some stuff */
+							Message msg = new Message();
+							msg.what = MSG_DEL_ADDR;
+							msg.arg1 = idx;
+							msg.obj = addr;
+							handler.sendMessage(msg);
 						})
 				.setNegativeButton(R.string.alert_dialog_cancel,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int whichButton) {
-								/* User clicked Cancel so do some stuff */
-							}
+						(dialog, whichButton) -> {
+							/* User clicked Cancel so do some stuff */
 						}).create();
 
 		ad.show();
@@ -416,42 +378,34 @@ public class BypassListActivity extends AppCompatActivity implements
 				.setTitle(R.string.bypass_edit_title)
 				.setView(textEntryView)
 				.setPositiveButton(R.string.alert_dialog_ok,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int whichButton) {
-								/* User clicked OK so do some stuff */
+						(dialog, whichButton) -> {
+							/* User clicked OK so do some stuff */
 
-								new Thread() {
-									@Override
-									public void run() {
-										EditText addrText = (EditText) textEntryView
-												.findViewById(R.id.text_edit);
-										String addr = addrText.getText()
-												.toString();
-										addr = Profile.validateAddr(addr);
-										if (addr != null) {
-											Message m = new Message();
-											m.what = msg;
-											m.arg1 = idx;
-											m.obj = addr;
-											handler.sendMessage(m);
-										} else {
-											handler.sendEmptyMessage(MSG_ERR_ADDR);
-										}
+							new Thread() {
+								@Override
+								public void run() {
+									EditText addrText1 = (EditText) textEntryView
+											.findViewById(R.id.text_edit);
+									String addr = addrText1.getText()
+											.toString();
+									addr = Profile.validateAddr(addr);
+									if (addr != null) {
+										Message m = new Message();
+										m.what = msg;
+										m.arg1 = idx;
+										m.obj = addr;
+										handler.sendMessage(m);
+									} else {
+										handler.sendEmptyMessage(MSG_ERR_ADDR);
 									}
-								}.start();
+								}
+							}.start();
 
-							}
 						})
 				.setNegativeButton(R.string.alert_dialog_cancel,
-						new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog,
-									int whichButton) {
+						(dialog, whichButton) -> {
 
-								/* User clicked cancel so do some stuff */
-							}
+							/* User clicked cancel so do some stuff */
 						}).create();
 		ad.show();
 	}
@@ -461,15 +415,13 @@ public class BypassListActivity extends AppCompatActivity implements
 		final ProgressDialog pd = ProgressDialog.show(this, "",
 				getString(R.string.reseting), true, true);
 
-		final Handler h = new Handler() {
-			@Override
-			public void handleMessage(Message msg) {
-				refreshList();
-				if (pd != null) {
-					pd.dismiss();
-				}
+		final Handler h = new Handler(msg -> {
+			refreshList();
+			if (pd != null) {
+				pd.dismiss();
 			}
-		};
+			return true;
+		});
 
 		new Thread() {
 			@Override
@@ -499,16 +451,15 @@ public class BypassListActivity extends AppCompatActivity implements
 		}
 
 		String[] addrs = Profile.decodeAddrs(profile.getBypassAddrs());
-		bypassList = new ArrayList<String>();
+		bypassList = new ArrayList<>();
 
-		for (String addr : addrs) {
-			bypassList.add(addr);
-			// Log.d(TAG, addr);
-		}
+		// Log.d(TAG, addr);
+		bypassList.addAll(Arrays.asList(addrs));
 
 		final LayoutInflater inflater = getLayoutInflater();
 
-		adapter = new ArrayAdapter<String>(this, R.layout.bypass_list_item,
+		// Inflate a new view
+		ListAdapter adapter = new ArrayAdapter<String>(this, R.layout.bypass_list_item,
 				R.id.bypasslistItemText, bypassList) {
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent) {

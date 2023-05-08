@@ -24,9 +24,10 @@ public class FileChooser extends ListActivity {
 	private void fill(File f) {
 		File[] dirs = f.listFiles();
 		this.setTitle(getString(R.string.current_dir) + ": " + f.getName());
-		List<Option> dir = new ArrayList<Option>();
-		List<Option> fls = new ArrayList<Option>();
+		List<Option> dir = new ArrayList<>();
+		List<Option> fls = new ArrayList<>();
 		try {
+			assert dirs != null;
 			for (File ff : dirs) {
 				if (ff.isDirectory())
 					dir.add(new Option(ff.getName(),
@@ -37,7 +38,7 @@ public class FileChooser extends ListActivity {
 									.getAbsolutePath()));
 				}
 			}
-		} catch (Exception e) {
+		} catch (Exception ignored) {
 
 		}
 		Collections.sort(dir);
@@ -55,8 +56,6 @@ public class FileChooser extends ListActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		((ProxyDroidApplication)getApplication())
-				.firebaseAnalytics.setCurrentScreen(this, "file_chooser", null);
 		currentDir = new File(Utils.getDataPath(this));
 		fill(currentDir);
 	}

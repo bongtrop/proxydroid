@@ -14,7 +14,7 @@ public class InnerSocketBuilder {
 
 	private boolean isConnected = false;
 
-	private final String TAG = "CMWRAP->InnerSocketBuilder";
+	private final String TAG = "InnSocketBuilder";
 
 	/**
 	 * 建立经由代理服务器至目标服务器的连接

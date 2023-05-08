@@ -20,6 +20,8 @@ package org.proxydroid;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 
+import androidx.annotation.NonNull;
+
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -89,7 +91,7 @@ public class Profile implements Serializable {
 		}
 
 		try {
-			port = Integer.valueOf(portText);
+			port = Integer.parseInt(portText);
 		} catch (Exception e) {
 			port = 3128;
 		}
@@ -116,13 +118,12 @@ public class Profile implements Serializable {
 		ed.putBoolean("isDNSProxy", isDNSProxy);
 		ed.putString("ssid", ssid);
 		ed.putString("excludedSsid", excludedSsid);
-		ed.commit();
+		ed.apply();
 	}
 
 	public void init() {
 		host = "";
 		port = 3128;
-		ssid = "";
 		user = "";
 		domain = "";
 		password = "";
@@ -139,6 +140,7 @@ public class Profile implements Serializable {
 		isPAC = false;
 	}
 
+	@NonNull
 	@Override
 	public String toString() {
 		return this.encodeJson().toJSONString();
@@ -171,8 +173,8 @@ public class Profile implements Serializable {
 		return obj;
 	}
 
-	class JSONDecoder {
-		private JSONObject obj;
+	static class JSONDecoder {
+		private final JSONObject obj;
 
 		public JSONDecoder(String values) throws ParseException {
 			JSONParser parser = new JSONParser();
@@ -191,7 +193,7 @@ public class Profile implements Serializable {
 			Object tmp = obj.get(key);
 			if (tmp != null) {
 				try {
-					return Integer.valueOf(tmp.toString());
+					return Integer.parseInt(tmp.toString());
 				} catch (NumberFormatException e) {
 					return def;
 				}
@@ -262,7 +264,6 @@ public class Profile implements Serializable {
 				InetAddress addr = InetAddress.getByName(ia);
 				addrString = addr.getHostAddress();
 			} catch (Exception ignore) {
-				addrString = null;
 			}
 
 			if (addrString != null) {
@@ -279,7 +280,7 @@ public class Profile implements Serializable {
 
 	public static String[] decodeAddrs(String addrs) {
 		String[] list = addrs.split("\\|");
-		Vector<String> ret = new Vector<String>();
+		Vector<String> ret = new Vector<>();
 		for (String addr : list) {
 			String ta = validateAddr(addr);
 			if (ta != null)
@@ -293,14 +294,13 @@ public class Profile implements Serializable {
 		if (addrs.length == 0)
 			return "";
 
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		for (String addr : addrs) {
 			String ta = validateAddr(addr);
 			if (ta != null)
-				sb.append(ta + "|");
+				sb.append(ta).append("|");
 		}
-		String ret = sb.substring(0, sb.length() - 1);
-		return ret;
+		return sb.substring(0, sb.length() - 1);
 	}
 
 	/**
@@ -566,7 +566,7 @@ public class Profile implements Serializable {
 	}
 
 	/**
-	 * @param isDNSProxy
+	 * @param isPAC
 	 *            the isDNSProxy to set
 	 */
 	public void setPAC(boolean isPAC) {
