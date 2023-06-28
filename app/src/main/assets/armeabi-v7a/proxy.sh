@@ -59,6 +59,8 @@ redsocks {
  ip = $host;
  port = $port;
  type = http-relay;
+ on_proxy_fail = forward_http_err;
+ splice = true;
 }
 redsocks {
  local_ip = 0.0.0.0;
@@ -66,6 +68,8 @@ redsocks {
  ip = $host;
  port = $port;
  type = http-connect;
+ on_proxy_fail = forward_http_err;
+ splice = true;
 }
  " >>$DIR/redsocks.conf
    ;;

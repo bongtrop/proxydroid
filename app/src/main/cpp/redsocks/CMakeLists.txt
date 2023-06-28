@@ -1,8 +1,8 @@
 add_executable(redsocks
-        base.c dnstc.c http-connect.c
-        log.c md5.c socks5.c
-        base64.c http-auth.c http-relay.c main.c
-        parser.c redsocks.c socks4.c utils.c
+        redsocks/base.c redsocks/dnstc.c redsocks/http-connect.c
+        redsocks/log.c redsocks/md5.c redsocks/socks5.c
+        redsocks/base64.c redsocks/http-auth.c redsocks/http-relay.c redsocks/main.c
+        redsocks/parser.c redsocks/redsocks.c redsocks/socks4.c redsocks/utils.c
         )
 
 target_include_directories(redsocks

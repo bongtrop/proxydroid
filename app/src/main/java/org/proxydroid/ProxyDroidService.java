@@ -93,8 +93,8 @@ public class ProxyDroidService extends Service {
     final static String CMD_IPTABLES_RETURN = "iptables -t nat -A OUTPUT -p tcp -d 0.0.0.0 -j RETURN\n";
 
     final static String CMD_IPTABLES_REDIRECT_ADD_HTTP = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to 8123\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to 8124\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j REDIRECT --to 8124\n";
+            + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to 8123\n"
+            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j REDIRECT --to 8123\n";
 
     final static String CMD_IPTABLES_DNAT_ADD_HTTP = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination 127.0.0.1:8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j DNAT --to-destination 127.0.0.1:8124\n"
@@ -201,11 +201,21 @@ public class ProxyDroidService extends Service {
                         + (!domain.equals("") ? "@" + domain : "@local") + " -p " + password + " "
                         + proxyHost + ":" + proxyPort + "\n");
             } else {
-                final String u = Utils.preserve(user);
-                final String p = Utils.preserve(password);
+//                final String u = Utils.preserve(user);
+//                final String p = Utils.preserve(password);
+//
+//                Utils.runRootCommand(basePath + "proxy.sh " + basePath + " start" + " " + proxyType + " " + proxyHost
+//                        + " " + proxyPort + " " + auth + " \"" + u + "\" \"" + p + "\"");
 
-                Utils.runRootCommand(basePath + "proxy.sh " + basePath + " start" + " " + proxyType + " " + proxyHost
-                        + " " + proxyPort + " " + auth + " \"" + u + "\" \"" + p + "\"");
+                String src = "-L=red://127.0.0.1:8123?sniffing=true&tproxy=true";
+                String auth = "";
+                if (!user.isEmpty() && !password.isEmpty()) {
+                    auth = user + ":" + password + "@";
+                }
+                String dst = "-F=http://"  + auth + hostName + ":" + port +"?ip=" + host;
+
+                // Start gost here
+                Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + src + " " + dst);
             }
 
             StringBuilder cmd = new StringBuilder();

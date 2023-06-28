@@ -1,17 +1,16 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.gms.google-services'
-apply plugin: 'io.fabric'
 
 android {
     compileSdkVersion 33
     buildToolsVersion "33.0.0"
-    ndkVersion "20.0.5594570"
     defaultConfig {
         applicationId "org.proxydroid"
         minSdkVersion 16
         targetSdkVersion 33
         versionCode 72
         versionName "3.2.0"
+        multiDexEnabled true
 
         ndk {
             // Specifies the ABI configurations of your native
@@ -32,20 +31,22 @@ android {
 
     externalNativeBuild {
         cmake {
-            version '3.10.2'
+            version '3.22.1'
             path "src/main/cpp/CMakeLists.txt"
         }
     }
+    namespace 'org.proxydroid'
 }
 
 configurations {
     compile.exclude group: "junit", module: "junit"
+    all*.exclude group: 'org.hamcrest', module: 'hamcrest-core'
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
     implementation 'com.googlecode.json-simple:json-simple:1.1.1'
     implementation 'org.mozilla:rhino:1.7.11'
 }
