@@ -1,4 +1,0 @@
-[submodule "app/src/main/cpp/redsocks/redsocks"]
-	path = app/src/main/cpp/redsocks/redsocks
-	url = https://github.com/darkk/redsocks
-	branch = master
