@@ -41,6 +41,13 @@
         android:title="@string/proxy_type">
     </ListPreference>
 
+    <EditTextPreference
+        android:defaultValue="1.1.1.1"
+        android:key="dns"
+        android:summary="@string/dns_summary"
+        android:title="@string/dns">
+    </EditTextPreference>
+
     <CheckBoxPreference
         android:key="isAutoConnect"
         android:summary="@string/auto_connect_summary"

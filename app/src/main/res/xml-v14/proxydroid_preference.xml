@@ -41,6 +41,13 @@
         android:title="@string/proxy_type">
     </ListPreference>
 
+    <EditTextPreference
+        android:defaultValue="1.1.1.1"
+        android:key="dns"
+        android:summary="@string/dns_summary"
+        android:title="@string/dns">
+    </EditTextPreference>
+
     <CheckBoxPreference
         android:key="isAutoConnect"
         android:summary="@string/auto_connect_summary"
@@ -88,24 +95,6 @@
         android:password="true"
         android:summary="@string/password_summary"
         android:title="@string/password">
-    </EditTextPreference>
-
-    <CheckBoxPreference
-        android:key="isNTLM"
-        android:summary="@string/ntlm_summary"
-        android:title="@string/ntlm">
-    </CheckBoxPreference>
-
-    <EditTextPreference
-        android:key="domain"
-        android:summary="@string/domain_summary"
-        android:title="@string/domain">
-    </EditTextPreference>
-
-    <EditTextPreference
-        android:key="certificate"
-        android:summary="@string/certificate_summary"
-        android:title="@string/certificate">
     </EditTextPreference>
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/fearute_cat">

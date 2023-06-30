@@ -70,12 +70,9 @@ import org.proxydroid.utils.Utils;
 
 import java.lang.ref.WeakReference;
 import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
-import java.util.Enumeration;
 import java.util.List;
 
 public class ProxyDroidService extends Service {
@@ -97,14 +94,6 @@ public class ProxyDroidService extends Service {
             + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j REDIRECT --to 8123\n";
 
     final static String CMD_IPTABLES_DNAT_ADD_HTTP = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination 127.0.0.1:8123\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j DNAT --to-destination 127.0.0.1:8124\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j DNAT --to-destination 127.0.0.1:8124\n";
-
-    final static String CMD_IPTABLES_REDIRECT_ADD_HTTP_TUNNEL = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to 8123\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to 8123\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j REDIRECT --to 8123\n";
-
-    final static String CMD_IPTABLES_DNAT_ADD_HTTP_TUNNEL = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination 127.0.0.1:8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j DNAT --to-destination 127.0.0.1:8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j DNAT --to-destination 127.0.0.1:8123\n";
 
@@ -120,14 +109,12 @@ public class ProxyDroidService extends Service {
     private String bypassAddrs = "";
     private String user;
     private String password;
-    private String domain;
     private String proxyType = "http";
-    private String auth = "false";
+    private String dns;
     private boolean isAuth = false;
-    private boolean isNTLM = false;
     private boolean isPAC = false;
 
-    public String basePath = "/data/data/org.proxydroid/";
+    public String basePath;
 
     private SharedPreferences settings = null;
 
@@ -174,49 +161,23 @@ public class ProxyDroidService extends Service {
      */
     private void enableProxy() {
 
-        String proxyHost = host;
-        int proxyPort = port;
-
         try {
-            if ("https".equals(proxyType)) {
-                String src = "-L=http://127.0.0.1:8126";
-                String auth = "";
-                if (!user.isEmpty() && !password.isEmpty()) {
-                    auth = user + ":" + password + "@";
-                }
-                String dst = "-F=https://"  + auth + hostName + ":" + port +"?ip=" + host;
 
-                // Start gost here
-                Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + src + " " + dst);
+            final String u = Utils.preserve(user);
+            final String p = Utils.preserve(password);
 
-                // Reset host / port
-                proxyHost = "127.0.0.1";
-                proxyPort = 8126;
-                proxyType = "http";
+            String src = "-L=red://127.0.0.1:8123?sniffing=true";
+            String auth = "";
+            if (!u.isEmpty() && !p.isEmpty()) {
+                auth = u + ":" + p + "@";
             }
+            String dst = "-F=" + proxyType + "://"  + auth + hostName + ":" + port;
 
-            if (proxyType.equals("http") && isAuth && isNTLM) {
-                Utils.runRootCommand(basePath + "proxy.sh " + basePath + " start http 127.0.0.1 8025 false\n"
-                        + basePath + "cntlm -P " + basePath + "cntlm.pid -l 8025 -u " + user
-                        + (!domain.equals("") ? "@" + domain : "@local") + " -p " + password + " "
-                        + proxyHost + ":" + proxyPort + "\n");
-            } else {
-//                final String u = Utils.preserve(user);
-//                final String p = Utils.preserve(password);
-//
-//                Utils.runRootCommand(basePath + "proxy.sh " + basePath + " start" + " " + proxyType + " " + proxyHost
-//                        + " " + proxyPort + " " + auth + " \"" + u + "\" \"" + p + "\"");
+            // Start gost here
+            Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + src + " " + dst);
 
-                String src = "-L=red://127.0.0.1:8123?sniffing=true&tproxy=true";
-                String auth = "";
-                if (!user.isEmpty() && !password.isEmpty()) {
-                    auth = user + ":" + password + "@";
-                }
-                String dst = "-F=http://"  + auth + hostName + ":" + port +"?ip=" + host;
-
-                // Start gost here
-                Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + src + " " + dst);
-            }
+            // Start DNS
+            Utils.runRootCommand(basePath + "gost_dns.sh "  + basePath + " " + dns);
 
             StringBuilder cmd = new StringBuilder();
 
@@ -234,9 +195,6 @@ public class ProxyDroidService extends Service {
             if (proxyType.equals("socks4") || proxyType.equals("socks5")) {
                 redirectCmd = CMD_IPTABLES_REDIRECT_ADD_SOCKS;
                 dnatCmd = CMD_IPTABLES_DNAT_ADD_SOCKS;
-            } else if (proxyType.equals("http-tunnel")) {
-                redirectCmd = CMD_IPTABLES_REDIRECT_ADD_HTTP_TUNNEL;
-                dnatCmd = CMD_IPTABLES_DNAT_ADD_HTTP_TUNNEL;
             }
 
             if (isBypassApps) {
@@ -285,14 +243,11 @@ public class ProxyDroidService extends Service {
      */
     public boolean handleCommand() {
 
-        String filePath = getFilesDir().getAbsolutePath();
-
         Utils.runRootCommand(
-                "chmod 700 " + filePath + "/redsocks\n"
-                        + "chmod 700 " + filePath + "/proxy.sh\n"
-                        + "chmod 700 " + filePath + "/gost.sh\n"
-                        + "chmod 700 " + filePath + "/cntlm\n"
-                        + "chmod 700 " + filePath + "/gost\n");
+                "chmod +x " + basePath + "gost.sh\n"
+                        + "chmod +x " + basePath + "gost_dns.sh\n"
+                        + "chmod +x " + basePath + "gost\n");
+
 
         enableProxy();
 
@@ -371,7 +326,7 @@ public class ProxyDroidService extends Service {
 
         } else {
             pendIntent = PendingIntent.getActivity
-                    (this, 0, intent, PendingIntent.FLAG_ONE_SHOT);
+                    (this, 0, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
         }
 
     }
@@ -426,15 +381,9 @@ public class ProxyDroidService extends Service {
 
         sb.append(Utils.getIptables()).append(" -t nat -F OUTPUT\n");
 
-        if ("https".equals(proxyType)) {
-            sb.append("kill -9 `cat ").append(basePath).append("gost.pid`\n");
-        }
+        sb.append("kill -9 `cat ").append(basePath).append("gost.pid`\n");
 
-        if (isAuth && isNTLM) {
-            sb.append("kill -9 `cat ").append(basePath).append("cntlm.pid`\n");
-        }
-
-        sb.append(basePath).append("proxy.sh ").append(basePath).append(" stop\n");
+        sb.append("kill -9 `cat ").append(basePath).append("gost_dns.pid`\n");
 
         new Thread() {
             @Override
@@ -474,26 +423,6 @@ public class ProxyDroidService extends Service {
         ed.apply();
         return true;
     });
-
-    // Local Ip address
-    public String getLocalIpAddress() {
-        try {
-            for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
-                    .hasMoreElements(); ) {
-                NetworkInterface intf = en.nextElement();
-                for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr
-                        .hasMoreElements(); ) {
-                    InetAddress inetAddress = enumIpAddr.nextElement();
-                    if (!inetAddress.isLoopbackAddress()) {
-                        return inetAddress.getHostAddress();
-                    }
-                }
-            }
-        } catch (SocketException ex) {
-            Log.e(TAG, ex.toString());
-        }
-        return null;
-    }
 
     private boolean getAddress() {
 
@@ -568,27 +497,20 @@ public class ProxyDroidService extends Service {
         host = bundle.getString("host");
         bypassAddrs = bundle.getString("bypassAddrs");
         proxyType = bundle.getString("proxyType");
+        dns = bundle.getString("dns");
         port = bundle.getInt("port");
         isAutoSetProxy = bundle.getBoolean("isAutoSetProxy");
         isBypassApps = bundle.getBoolean("isBypassApps");
         isAuth = bundle.getBoolean("isAuth");
-        isNTLM = bundle.getBoolean("isNTLM");
         isPAC = bundle.getBoolean("isPAC");
 
         if (isAuth) {
-            auth = "true";
             user = bundle.getString("user");
             password = bundle.getString("password");
         } else {
-            auth = "false";
             user = "";
             password = "";
         }
-
-        if (isNTLM)
-            domain = bundle.getString("domain");
-        else
-            domain = "";
 
         new Thread(() -> {
 

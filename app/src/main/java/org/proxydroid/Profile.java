@@ -54,7 +54,7 @@ public class Profile implements Serializable {
 	private boolean isDNSProxy = false;
 	private boolean isPAC = false;
 
-	private String domain;
+	private String dns;
 	private String ssid;
 	private String excludedSsid;
 
@@ -67,17 +67,15 @@ public class Profile implements Serializable {
 
 		host = settings.getString("host", "");
 		proxyType = settings.getString("proxyType", "http");
+		dns = settings.getString("dns", "");
 		user = settings.getString("user", "");
 		password = settings.getString("password", "");
 		ssid = settings.getString("ssid", "");
 		excludedSsid = settings.getString("excludedSsid", "");
 		bypassAddrs = settings.getString("bypassAddrs", "");
 		proxyedApps = settings.getString("Proxyed", "");
-		domain = settings.getString("domain", "");
-                certificate = settings.getString("certificate", "");
 
 		isAuth = settings.getBoolean("isAuth", false);
-		isNTLM = settings.getBoolean("isNTLM", false);
 		isAutoSetProxy = settings.getBoolean("isAutoSetProxy", false);
 		isBypassApps = settings.getBoolean("isBypassApps", false);
 		isDNSProxy = settings.getBoolean("isDNSProxy", false);
@@ -108,7 +106,7 @@ public class Profile implements Serializable {
 		ed.putString("password", password);
 		ed.putBoolean("isAuth", isAuth);
 		ed.putBoolean("isNTLM", isNTLM);
-		ed.putString("domain", domain);
+		ed.putString("dns", dns);
 		ed.putString("proxyType", proxyType);
                 ed.putString("certificate", certificate);
 		ed.putBoolean("isAutoConnect", isAutoConnect);
@@ -125,7 +123,7 @@ public class Profile implements Serializable {
 		host = "";
 		port = 3128;
 		user = "";
-		domain = "";
+		dns = "1.1.1.1";
 		password = "";
                 certificate = "";
 		isAuth = false;
@@ -156,8 +154,7 @@ public class Profile implements Serializable {
 		obj.put("proxyType", proxyType);
 		obj.put("user", user);
 		obj.put("password", password);
-		obj.put("domain", domain);
-                obj.put("certificate", certificate);
+		obj.put("dns", dns);
 		obj.put("bypassAddrs", bypassAddrs);
 		obj.put("Proxyed", proxyedApps);
 
@@ -227,8 +224,7 @@ public class Profile implements Serializable {
 		proxyType = jd.getString("proxyType", "http");
 		user = jd.getString("user", "");
 		password = jd.getString("password", "");
-		domain = jd.getString("domain", "");
-                certificate = jd.getString("certificate", "");
+		dns = jd.getString("dns", "");
 		bypassAddrs = jd.getString("bypassAddrs", "");
 		proxyedApps = jd.getString("Proxyed", "");
 
@@ -529,18 +525,18 @@ public class Profile implements Serializable {
 	}
 
 	/**
-	 * @return the domain
+	 * @return the dns
 	 */
-	public String getDomain() {
-		return domain;
+	public String getDNS() {
+		return dns;
 	}
 
 	/**
-	 * @param domain
-	 *            the domain to set
+	 * @param dns
+	 *            the dns to set
 	 */
-	public void setDomain(String domain) {
-		this.domain = domain;
+	public void setDNS(String dns) {
+		this.dns = dns;
 	}
 
 	/**
