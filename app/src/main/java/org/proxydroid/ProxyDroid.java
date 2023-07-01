@@ -184,6 +184,7 @@ public class ProxyDroid extends PreferenceActivity
         } else {
             abi = Build.CPU_ABI;
         }
+        // Copy per arch
         try {
             if (abi.matches("armeabi-v7a|arm64-v8a"))
                 files = assetManager.list("armeabi-v7a");
@@ -201,6 +202,29 @@ public class ProxyDroid extends PreferenceActivity
                         in = assetManager.open("armeabi-v7a/" + file);
                     else
                         in = assetManager.open("x86/" + file);
+                    out = new FileOutputStream(getFilesDir().getAbsolutePath() + "/" + file);
+                    copyFile(in, out);
+                    in.close();
+                    out.flush();
+                    out.close();
+                } catch (Exception e) {
+                    Log.e(TAG, e.getMessage());
+                }
+            }
+        }
+
+        // Copy for all
+        try {
+            files = assetManager.list("all");
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
+        }
+        if (files != null) {
+            for (String file : files) {
+                InputStream in;
+                OutputStream out;
+                try {
+                    in = assetManager.open("all/" + file);
                     out = new FileOutputStream(getFilesDir().getAbsolutePath() + "/" + file);
                     copyFile(in, out);
                     in.close();
@@ -1025,7 +1049,6 @@ public class ProxyDroid extends PreferenceActivity
 
         Utils.runRootCommand(
                 "chmod 700 " + filePath + "/gost.sh\n"
-                        + "chmod 700 " + filePath + "/gost_dns.sh\n"
                         + "chmod 700 " + filePath + "/gost\n");
     }
 

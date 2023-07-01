@@ -91,11 +91,15 @@ public class ProxyDroidService extends Service {
 
     final static String CMD_IPTABLES_REDIRECT_ADD_HTTP = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to 8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to 8123\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j REDIRECT --to 8123\n";
+            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j REDIRECT --to 8123\n"
+            + "iptables -t nat -A OUTPUT -p udp --dport 443 -j REDIRECT --to 8124\n"
+            + "iptables -t nat -A OUTPUT -p udp --dport 5228 -j REDIRECT --to 8124\n";
 
     final static String CMD_IPTABLES_DNAT_ADD_HTTP = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination 127.0.0.1:8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j DNAT --to-destination 127.0.0.1:8123\n"
-            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j DNAT --to-destination 127.0.0.1:8123\n";
+            + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j DNAT --to-destination 127.0.0.1:8123\n"
+            + "iptables -t nat -A OUTPUT -p udp --dport 443 -j DNAT --to-destination 127.0.0.1:8124\n"
+            + "iptables -t nat -A OUTPUT -p udp --dport 5228 -j DNAT --to-destination 127.0.0.1:8124\n";
 
     final static String CMD_IPTABLES_REDIRECT_ADD_SOCKS = "iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to 8123\n";
 
@@ -166,18 +170,20 @@ public class ProxyDroidService extends Service {
             final String u = Utils.preserve(user);
             final String p = Utils.preserve(password);
 
-            String src = "-L=red://127.0.0.1:8123?sniffing=true";
+            String srcTcp = "-L=red://127.0.0.1:8123?sniffing=true";
+            String srcUdp = "-L=redu://127.0.0.1:8124?ttl=30s";
+            String srcDns = "-L=dns://:53/" + dns;
             String auth = "";
             if (!u.isEmpty() && !p.isEmpty()) {
                 auth = u + ":" + p + "@";
             }
-            String dst = "-F=" + proxyType + "://"  + auth + hostName + ":" + port;
+            String dstTcp = "-F=" + proxyType + "://"  + auth + hostName + ":" + port;
+            String dstUdp = "-F=relay://" + hostName + ":" + port;
 
-            // Start gost here
-            Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + src + " " + dst);
-
-            // Start DNS
-            Utils.runRootCommand(basePath + "gost_dns.sh "  + basePath + " " + dns);
+            // Start gost tcp here
+            Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + srcTcp + " " + dstTcp + " " + "tcp");
+            Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + srcUdp + " " + dstUdp + " " + "udp");
+            Utils.runRootCommand(basePath + "gost.sh "  + basePath + " " + srcDns + " '' " + "dns");
 
             StringBuilder cmd = new StringBuilder();
 
@@ -245,7 +251,6 @@ public class ProxyDroidService extends Service {
 
         Utils.runRootCommand(
                 "chmod +x " + basePath + "gost.sh\n"
-                        + "chmod +x " + basePath + "gost_dns.sh\n"
                         + "chmod +x " + basePath + "gost\n");
 
 
@@ -381,8 +386,8 @@ public class ProxyDroidService extends Service {
 
         sb.append(Utils.getIptables()).append(" -t nat -F OUTPUT\n");
 
-        sb.append("kill -9 `cat ").append(basePath).append("gost.pid`\n");
-
+        sb.append("kill -9 `cat ").append(basePath).append("gost_tcp.pid`\n");
+        sb.append("kill -9 `cat ").append(basePath).append("gost_udp.pid`\n");
         sb.append("kill -9 `cat ").append(basePath).append("gost_dns.pid`\n");
 
         new Thread() {

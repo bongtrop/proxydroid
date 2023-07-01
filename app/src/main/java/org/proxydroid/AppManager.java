@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -313,8 +314,9 @@ public class AppManager extends AppCompatActivity implements OnCheckedChangeList
 					app.setProxyed(true);
 			} else app.setProxyed(Arrays.binarySearch(tordApps, app.getUsername()) >= 0);
 
-			if (app.isProxyed())
+			if (app.isProxyed()) {
 				vectorApps.add(app);
+			}
 
 		}
 
