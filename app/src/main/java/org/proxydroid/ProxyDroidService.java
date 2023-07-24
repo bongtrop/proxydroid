@@ -91,14 +91,18 @@ public class ProxyDroidService extends Service {
 
     final static String CMD_IPTABLES_REDIRECT_ADD_HTTP = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to 8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to 8123\n"
+            + "iptables -t nat -A OUTPUT -p tcp --dport 8443 -j REDIRECT --to 8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j REDIRECT --to 8123\n"
             + "iptables -t nat -A OUTPUT -p udp --dport 443 -j REDIRECT --to 8124\n"
+            + "iptables -t nat -A OUTPUT -p udp --dport 8443 -j REDIRECT --to 8124\n"
             + "iptables -t nat -A OUTPUT -p udp --dport 5228 -j REDIRECT --to 8124\n";
 
     final static String CMD_IPTABLES_DNAT_ADD_HTTP = "iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination 127.0.0.1:8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 443 -j DNAT --to-destination 127.0.0.1:8123\n"
+            + "iptables -t nat -A OUTPUT -p tcp --dport 8443 -j DNAT --to-destination 127.0.0.1:8123\n"
             + "iptables -t nat -A OUTPUT -p tcp --dport 5228 -j DNAT --to-destination 127.0.0.1:8123\n"
             + "iptables -t nat -A OUTPUT -p udp --dport 443 -j DNAT --to-destination 127.0.0.1:8124\n"
+            + "iptables -t nat -A OUTPUT -p udp --dport 8443 -j DNAT --to-destination 127.0.0.1:8124\n"
             + "iptables -t nat -A OUTPUT -p udp --dport 5228 -j DNAT --to-destination 127.0.0.1:8124\n";
 
     final static String CMD_IPTABLES_REDIRECT_ADD_SOCKS = "iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to 8123\n";
